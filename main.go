@@ -57,7 +57,7 @@ func createBucketIfNotExists(sess *session.Session, bucketName string) error {
 }
 
 func die(err error) {
-	fmt.Fprintf(os.Stderr, "s3upload: %v\n", err)
+	fmt.Fprintf(os.Stderr, "s3 %v\n", err)
 	os.Exit(1)
 }
 
@@ -68,7 +68,7 @@ func upload(filename string) error {
 	}
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0)
 	if err != nil {
-		return fmt.Errorf("os.OpenFile: %v", err)
+		return fmt.Errorf("%v", err)
 	}
 	defer f.Close()
 	basename := filepath.Base(filename)
@@ -100,7 +100,18 @@ func download(filename string) error {
 		Key:    aws.String(filename),
 	}
 	if _, err := downloader.Download(file, downloadParams); err != nil {
-		return fmt.Errorf("downloader.Download: %v", err)
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				return fmt.Errorf("bucket not found")
+			case s3.ErrCodeNoSuchKey:
+				return fmt.Errorf("download %s/%s: no such file", bucketName, filename)
+			default:
+				return fmt.Errorf("downloader.Download: %v", err)
+			}
+		} else {
+			return fmt.Errorf("downloader.Download: %v", err)
+		}
 	}
 	return nil
 }
