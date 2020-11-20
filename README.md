@@ -14,6 +14,8 @@ $ go get "github.com/vegarsti/s3"
 
 ## Usage
 
+Set environment variables `AWS_REGION` and `AWS_BUCKET`.
+
 ```sh
 $ echo "hello" > hello.txt
 

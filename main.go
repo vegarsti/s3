@@ -12,32 +12,38 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-var (
-	bucketName = "golang-to-s3"
-	awsRegion  = "eu-west-1"
-)
+var bucketName string
+var awsRegion string
 
-func createFile(filename string) error {
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
+func readEnvVars() error {
+	awsRegion = os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		return fmt.Errorf("set environment variable AWS_REGION")
 	}
-	defer f.Close()
-	if _, err := f.WriteString("hello world\n"); err != nil {
-		return err
+	bucketName = os.Getenv("AWS_BUCKET")
+	if bucketName == "" {
+		return fmt.Errorf("set environment variable AWS_BUCKET")
 	}
 	return nil
 }
 
 func die(err error) {
-	fmt.Fprintf(os.Stderr, "s3 %v\n", err)
+	fmt.Fprintf(os.Stderr, "s3: %v\n", err)
 	os.Exit(1)
 }
 
-func upload(filename string) error {
+func newSession() (*session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
 	if err != nil {
-		return fmt.Errorf("session.NewSession: %v", err)
+		return nil, fmt.Errorf("session.NewSession: %v", err)
+	}
+	return sess, nil
+}
+
+func upload(filename string) error {
+	sess, err := newSession()
+	if err != nil {
+		return fmt.Errorf("newSession: %v", err)
 	}
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0)
 	if err != nil {
@@ -58,9 +64,9 @@ func upload(filename string) error {
 }
 
 func download(filename string) error {
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+	sess, err := newSession()
 	if err != nil {
-		return fmt.Errorf("session.NewSession: %v", err)
+		return fmt.Errorf("newSession: %v", err)
 	}
 	file, err := os.Create(filename)
 	if err != nil {
@@ -90,9 +96,9 @@ func download(filename string) error {
 }
 
 func list() error {
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+	sess, err := newSession()
 	if err != nil {
-		return fmt.Errorf("session.NewSession: %v", err)
+		return fmt.Errorf("newSession: %v", err)
 	}
 	client := s3.New(sess)
 	input := &s3.ListObjectsV2Input{Bucket: aws.String(bucketName)}
@@ -106,10 +112,26 @@ func list() error {
 	return nil
 }
 
+func validSubcommand() bool {
+	if os.Args[1] == "upload" && len(os.Args) == 3 {
+		return true
+	}
+	if os.Args[1] == "download" && len(os.Args) == 3 {
+		return true
+	}
+	if os.Args[1] == "list" && len(os.Args) == 2 {
+		return true
+	}
+	return false
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) < 2 || !validSubcommand() {
 		fmt.Fprintf(os.Stderr, "usage: s3 [upload|download|list] [file ...]\n")
 		os.Exit(1)
+	}
+	if err := readEnvVars(); err != nil {
+		die(err)
 	}
 	if os.Args[1] == "upload" {
 		if err := upload(os.Args[2]); err != nil {
