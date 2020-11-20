@@ -21,7 +21,7 @@ $ s3 upload hello.txt
 
 $ rm hello.txt
 
-$ s3 download imdb.csv
+$ s3 download hello.txt
 
 $ cat hello.txt
 hello
