@@ -1,4 +1,4 @@
-# table
+# s3
 
 <p>
     <a href="https://github.com/vegarsti/s3/releases"><img src="https://img.shields.io/github/release/vegarsti/s3.svg" alt="Latest Release"></a>
