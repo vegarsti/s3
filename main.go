@@ -29,33 +29,6 @@ func createFile(filename string) error {
 	return nil
 }
 
-func createBucketIfNotExists(sess *session.Session, bucketName string) error {
-	client := s3.New(sess)
-	input := &s3.CreateBucketInput{
-		Bucket: aws.String(bucketName),
-		CreateBucketConfiguration: &s3.CreateBucketConfiguration{
-			LocationConstraint: aws.String("eu-west-1"),
-		},
-	}
-	result, err := client.CreateBucket(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case s3.ErrCodeBucketAlreadyExists:
-				return fmt.Errorf("%s: %v", s3.ErrCodeBucketAlreadyExists, aerr.Error())
-			case s3.ErrCodeBucketAlreadyOwnedByYou:
-				return nil
-			default:
-				return aerr
-			}
-		} else {
-			return err
-		}
-	}
-	fmt.Println(result)
-	return nil
-}
-
 func die(err error) {
 	fmt.Fprintf(os.Stderr, "s3 %v\n", err)
 	os.Exit(1)
@@ -116,9 +89,26 @@ func download(filename string) error {
 	return nil
 }
 
+func list() error {
+	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+	if err != nil {
+		return fmt.Errorf("session.NewSession: %v", err)
+	}
+	client := s3.New(sess)
+	input := &s3.ListObjectsV2Input{Bucket: aws.String(bucketName)}
+	output, err := client.ListObjectsV2(input)
+	if err != nil {
+		return fmt.Errorf("ListObjectsV2: %v", err)
+	}
+	for _, object := range output.Contents {
+		fmt.Fprintln(os.Stdout, *object.Key)
+	}
+	return nil
+}
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "usage: s3 [upload|download] [file ...]\n")
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "usage: s3 [upload|download|list] [file ...]\n")
 		os.Exit(1)
 	}
 	if os.Args[1] == "upload" {
@@ -129,6 +119,15 @@ func main() {
 	if os.Args[1] == "download" {
 		if err := download(os.Args[2]); err != nil {
 			die(fmt.Errorf("download: %v", err))
+		}
+	}
+	if os.Args[1] == "list" {
+		if len(os.Args) != 2 {
+			fmt.Fprintf(os.Stderr, "usage: s3 [upload|download|list] [file ...]\n")
+			os.Exit(1)
+		}
+		if err := list(); err != nil {
+			die(fmt.Errorf("list: %v", err))
 		}
 	}
 }

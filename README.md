@@ -19,6 +19,9 @@ $ echo "hello" > hello.txt
 
 $ s3 upload hello.txt
 
+$ s3 list
+hello.txt
+
 $ rm hello.txt
 
 $ s3 download hello.txt
