@@ -113,10 +113,10 @@ func list() error {
 }
 
 func validSubcommand() bool {
-	if os.Args[1] == "upload" && len(os.Args) == 3 {
+	if os.Args[1] == "upload" && len(os.Args) > 3 {
 		return true
 	}
-	if os.Args[1] == "download" && len(os.Args) == 3 {
+	if os.Args[1] == "download" && len(os.Args) > 3 {
 		return true
 	}
 	if os.Args[1] == "list" && len(os.Args) == 2 {
@@ -134,13 +134,17 @@ func main() {
 		die(err)
 	}
 	if os.Args[1] == "upload" {
-		if err := upload(os.Args[2]); err != nil {
-			die(fmt.Errorf("upload: %v", err))
+		for _, filename := range os.Args[2:] {
+			if err := upload(filename); err != nil {
+				die(fmt.Errorf("upload: %v", err))
+			}
 		}
 	}
 	if os.Args[1] == "download" {
-		if err := download(os.Args[2]); err != nil {
-			die(fmt.Errorf("download: %v", err))
+		for _, filename := range os.Args[2:] {
+			if err := download(filename); err != nil {
+				die(fmt.Errorf("download: %v", err))
+			}
 		}
 	}
 	if os.Args[1] == "list" {
