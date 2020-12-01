@@ -22,6 +22,7 @@ $ echo "hello" > hello.txt
 $ s3 upload hello.txt
 
 $ s3 list
+hi.txt
 hello.txt
 
 $ rm hello.txt
@@ -30,5 +31,10 @@ $ s3 download hello.txt
 
 $ cat hello.txt
 hello
+
+$ s3 delete hello.txt
+
+$ s3 list
+hi.txt
 
 ```

@@ -95,6 +95,33 @@ func download(filename string) error {
 	return nil
 }
 
+func delete(filename string) error {
+	sess, err := newSession()
+	if err != nil {
+		return fmt.Errorf("newSession: %v", err)
+	}
+	deleteParams := &s3.DeleteObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(filename),
+	}
+	deleter := s3.New(sess)
+	if _, err := deleter.DeleteObject(deleteParams); err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				return fmt.Errorf("bucket not found")
+			case s3.ErrCodeNoSuchKey:
+				return fmt.Errorf("delete %s/%s: no such file", bucketName, filename)
+			default:
+				return fmt.Errorf("deleter.DeleteObject: %v", err)
+			}
+		} else {
+			return fmt.Errorf("deleter.DeleteObject: %v", err)
+		}
+	}
+	return nil
+}
+
 func list() error {
 	sess, err := newSession()
 	if err != nil {
@@ -113,47 +140,63 @@ func list() error {
 }
 
 func validSubcommand() bool {
-	if os.Args[1] == "upload" && len(os.Args) > 3 {
+	switch {
+	case os.Args[1] == "upload" && len(os.Args) > 2:
 		return true
-	}
-	if os.Args[1] == "download" && len(os.Args) > 3 {
+	case os.Args[1] == "download" && len(os.Args) > 2:
 		return true
-	}
-	if os.Args[1] == "list" && len(os.Args) == 2 {
+	case os.Args[1] == "delete" && len(os.Args) > 2:
 		return true
+	case os.Args[1] == "list" && len(os.Args) == 2:
+		return true
+	default:
+		return false
 	}
-	return false
 }
 
 func main() {
+	usageString := "usage: s3 [upload|download|delete|list] [file ...]\n"
 	if len(os.Args) < 2 || !validSubcommand() {
-		fmt.Fprintf(os.Stderr, "usage: s3 [upload|download|list] [file ...]\n")
+		fmt.Fprintf(os.Stderr, usageString)
 		os.Exit(1)
 	}
 	if err := readEnvVars(); err != nil {
 		die(err)
 	}
-	if os.Args[1] == "upload" {
-		for _, filename := range os.Args[2:] {
-			if err := upload(filename); err != nil {
-				die(fmt.Errorf("upload: %v", err))
+	switch os.Args[1] {
+	case "upload":
+		{
+			for _, filename := range os.Args[2:] {
+				if err := upload(filename); err != nil {
+					die(fmt.Errorf("upload: %v", err))
+				}
 			}
 		}
-	}
-	if os.Args[1] == "download" {
-		for _, filename := range os.Args[2:] {
-			if err := download(filename); err != nil {
-				die(fmt.Errorf("download: %v", err))
+	case "download":
+		{
+			for _, filename := range os.Args[2:] {
+				if err := download(filename); err != nil {
+					die(fmt.Errorf("download: %v", err))
+				}
 			}
 		}
-	}
-	if os.Args[1] == "list" {
-		if len(os.Args) != 2 {
-			fmt.Fprintf(os.Stderr, "usage: s3 [upload|download|list] [file ...]\n")
-			os.Exit(1)
+	case "list":
+		{
+			if len(os.Args) != 2 {
+				fmt.Fprintf(os.Stderr, usageString)
+				os.Exit(1)
+			}
+			if err := list(); err != nil {
+				die(fmt.Errorf("list: %v", err))
+			}
 		}
-		if err := list(); err != nil {
-			die(fmt.Errorf("list: %v", err))
+	case "delete":
+		{
+			for _, filename := range os.Args[2:] {
+				if err := delete(filename); err != nil {
+					die(fmt.Errorf("download: %v", err))
+				}
+			}
 		}
 	}
 }
