@@ -14,7 +14,7 @@ $ go get "github.com/vegarsti/s3"
 
 ## Usage
 
-Set environment variables `AWS_REGION` and `AWS_BUCKET`.
+Set environment variables `AWS_REGION` and `AWS_BUCKET`, and store AWS credentials in `~/.aws/credentials`, as described [in the documentation](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials).
 
 ```sh
 $ echo "hello" > hello.txt
